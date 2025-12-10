@@ -16,13 +16,11 @@ async function bootstrap() {
     allowedHeaders: 'Content-Type, Authorization, x-api-key',
   });
 
-  // Protect webhook route
   app.use(
     '/wallet/paystack/webhook',
     bodyParser.json({ limit: '200kb' }),
   );
 
-  // DTO validation globally
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -31,17 +29,24 @@ async function bootstrap() {
     }),
   );
 
-  
   app.useGlobalFilters(new HttpExceptionFilter());
   setupSwagger(app);
 
+  // ✔ Correct shutdown hook
   const prismaService = app.get(PrismaService);
-  await app.enableShutdownHooks();
-
+  app.enableShutdownHooks();
 
   const port = process.env.PORT ?? 3000;
-  await app.listen(port);
-  Logger.log(`Server running at http://localhost:${port}`);
+  await app.listen(port, '0.0.0.0');
+
+  const isProd = process.env.NODE_ENV === 'production';
+  const host = isProd
+    ? process.env.RAILWAY_PUBLIC_DOMAIN ||
+      process.env.RAILWAY_STATIC_URL ||
+      'https://walletservicewithpaystackjwtapikey-production.up.railway.app/'
+    : `localhost:${port}`;
+
+  Logger.log(`Server running at ${host}`);
 }
 
 bootstrap();
